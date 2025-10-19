@@ -1,7 +1,7 @@
 local PluginWrapper = require(script.PluginWrapper)
 local wrapper = PluginWrapper.new(plugin)
 local toolbar = wrapper:CreateToolbar("Test")
-local button = wrapper:CreateButton(toolbar, "Test", "Opens Test", "")
+local button = wrapper:CreateButton(toolbar, "Test", "Opens Test", "") -- the last part is ur icon for the Button
 
 local dockInfo = DockWidgetPluginGuiInfo.new(
 	Enum.InitialDockState.Float,
