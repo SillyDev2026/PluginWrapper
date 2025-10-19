@@ -23,24 +23,24 @@ export type StudioWidget = {
 	_events: typeof(EventBus.new())
 }
 
-export type PluginWrapper<TSetting> = {
+export type PluginWrapper = {
 	Plugin: any,
 	_events: typeof(EventBus.new()),
 	_buttons: { [string]: StudioButton },
 	_widgets: { [string]: StudioWidget },
-	_settings: {[string]: TSetting},
-	CreateToolbar: (self: PluginWrapper<TSetting>, name: string) -> StudioToolbar,
-	CreateButton: (self: PluginWrapper<TSetting>, toolbar: StudioToolbar, name: string, tooltip: string, icon: string) -> StudioButton,
-	CreateWidget: (self: PluginWrapper<TSetting>, name: string, info: DockWidgetPluginGuiInfo) -> StudioWidget,
-	Clicked: (self: PluginWrapper<TSetting>, name: string, callback: (button: StudioButton) -> ()) -> (),
-	ClickedOnce: (self: PluginWrapper<TSetting>, name: string, callback: (button: StudioButton) -> ()) -> (),
-	FireClicked: (self: PluginWrapper<TSetting>, name: string) -> (),
-	Toggled: (self: PluginWrapper<TSetting>, name: string, callback: (widget: StudioWidget) -> ()) -> (),
-	Set: (self: PluginWrapper<TSetting>, key: string, value: TSetting, saveToPlugin: boolean?) -> (),
-	Get: (self: PluginWrapper<TSetting>, key: string) -> TSetting,
+	_settings: {[string]: any},
+	CreateToolbar: (self: PluginWrapper, name: string) -> StudioToolbar,
+	CreateButton: (self: PluginWrapper, toolbar: StudioToolbar, name: string, tooltip: string, icon: string) -> StudioButton,
+	CreateWidget: (self: PluginWrapper, name: string, info: DockWidgetPluginGuiInfo) -> StudioWidget,
+	Clicked: (self: PluginWrapper, name: string, callback: (button: StudioButton) -> ()) -> (),
+	ClickedOnce: (self: PluginWrapper, name: string, callback: (button: StudioButton) -> ()) -> (),
+	FireClicked: (self: PluginWrapper, name: string) -> (),
+	Toggled: (self: PluginWrapper, name: string, callback: (widget: StudioWidget) -> ()) -> (),
+	Set: (self: PluginWrapper, key: string, value: any, saveToPlugin: boolean?) -> (),
+	Get: (self: PluginWrapper, key: string) -> any,
 }
 
-local function shallowClone<TSetting>(tbl: TSetting)
+local function shallowClone(tbl)
 	if type(tbl) ~= 'table' then return tbl end
 	local clone = {}
 	for key, values in pairs(tbl) do
@@ -52,7 +52,7 @@ end
 local PluginWrapper = Class.define({
 	name = "PluginWrapper",
 
-	constructor = function<TSetting>(self: PluginWrapper<TSetting>, plugin: any)
+	constructor = function(self: PluginWrapper, plugin: any)
 		self.Plugin = plugin
 		self._events = EventBus.new()
 		self._buttons = {}
@@ -61,11 +61,11 @@ local PluginWrapper = Class.define({
 	end,
 
 	methods = {
-		CreateToolbar = function<TSetting>(self: PluginWrapper<TSetting>, name: string): StudioToolbar
+		CreateToolbar = function(self: PluginWrapper, name: string): StudioToolbar
 			return self.Plugin:CreateToolbar(name)
 		end,
 
-		CreateButton = function<TSetting>(self: PluginWrapper<TSetting>, toolbar: StudioToolbar, name: string, tooltip: string, icon: string): StudioButton
+		CreateButton = function(self: PluginWrapper, toolbar: StudioToolbar, name: string, tooltip: string, icon: string): StudioButton
 			local button = toolbar:CreateButton(name, tooltip, icon)
 			button.ClickableWhenViewportHidden = true
 			self._buttons[name] = button
@@ -77,7 +77,7 @@ local PluginWrapper = Class.define({
 			return button
 		end,
 
-		CreateWidget = function<TSetting>(self: PluginWrapper<TSetting>, name: string, info: DockWidgetPluginGuiInfo): StudioWidget
+		CreateWidget = function(self: PluginWrapper, name: string, info: DockWidgetPluginGuiInfo): StudioWidget
 			local widget = self.Plugin:CreateDockWidgetPluginGui(name, info)
 			local wrapper: any
 
@@ -135,25 +135,25 @@ local PluginWrapper = Class.define({
 			return wrapper
 		end,
 
-		Clicked = function<TSetting>(self: PluginWrapper<TSetting>, name: string, callback: (button: StudioButton) -> ())
+		Clicked = function(self: PluginWrapper, name: string, callback: (button: StudioButton) -> ())
 			self._events:_On("Clicked_" .. name, callback)
 		end,
 
-		ClickedOnce = function<TSetting>(self: PluginWrapper<TSetting>, name: string, callback: (button: StudioButton) -> ())
+		ClickedOnce = function(self: PluginWrapper, name: string, callback: (button: StudioButton) -> ())
 			self._events:_Once("Clicked_" .. name, callback)
 		end,
 
-		FireClicked = function<TSetting>(self: PluginWrapper<TSetting>, name: string)
+		FireClicked = function(self: PluginWrapper, name: string)
 			local button = self._buttons[name]
 			if button then
 				self._events:_Fire("Clicked_" .. name, button)
 			end
 		end,
 
-		Toggled = function<TSetting>(self: PluginWrapper<TSetting>, name: string, callback: (widget: StudioWidget) -> ())
+		Toggled = function(self: PluginWrapper, name: string, callback: (widget: StudioWidget) -> ())
 			self._events:_On("Toggled_" .. name, callback)
 		end,
-		Set = function<TSetting>(self:PluginWrapper<TSetting>, key: string, val: TSetting, saveToPlugin: boolean?)
+		Set = function(self:PluginWrapper, key: string, val: TSetting, saveToPlugin: boolean?)
 			local storedVal = shallowClone(val)
 			self._settings[key] = storedVal
 			if saveToPlugin and self.Plugin and self.Plugin.SetSetting then
@@ -163,7 +163,7 @@ local PluginWrapper = Class.define({
 			end
 			return storedVal
 		end,
-		Get = function<TSetting>(self: PluginWrapper<TSetting>, key: string)
+		Get = function(self: PluginWrapper, key: string)
 			return self._settings[key]
 		end,
 	}
@@ -171,8 +171,8 @@ local PluginWrapper = Class.define({
 
 local Plugin = {}
 
-function Plugin.new<TSetting>(plug: any): PluginWrapper<TSetting>
-	return (PluginWrapper.new(plug))::PluginWrapper<TSetting>
+function Plugin.new(plug: any): PluginWrapper
+	return (PluginWrapper.new(plug))::PluginWrapper
 end
 
 return Plugin
