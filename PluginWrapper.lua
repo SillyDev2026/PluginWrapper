@@ -16,34 +16,34 @@ export type StudioButton = {
 export type StudioWidget = {
 	Name: string,
 	Enabled: boolean,
-	Title: string,
+	Gui: {Title: string},
 	Toggle: (self: StudioWidget) -> (),
 	Open: (self: StudioWidget, enable: boolean) -> (),
 	Close: (self: StudioWidget, enable: boolean) -> (),
 	_events: typeof(EventBus.new())
 }
 
-export type PluginWrapper<TKey, TSetting> = {
+export type PluginWrapper<TSetting> = {
 	Plugin: any,
 	_events: typeof(EventBus.new()),
 	_buttons: { [string]: StudioButton },
 	_widgets: { [string]: StudioWidget },
 	_settings: {[string]: TSetting},
-	CreateToolbar: (self: PluginWrapper<TKey, TSetting>, name: string) -> StudioToolbar,
-	CreateButton: (self: PluginWrapper<TKey, TSetting>, toolbar: StudioToolbar, name: string, tooltip: string, icon: string) -> StudioButton,
-	CreateWidget: (self: PluginWrapper<TKey, TSetting>, name: string, info: DockWidgetPluginGuiInfo) -> StudioWidget,
-	Clicked: (self: PluginWrapper<TKey, TSetting>, name: string, callback: (button: StudioButton) -> ()) -> (),
-	ClickedOnce: (self: PluginWrapper<TKey, TSetting>, name: string, callback: (button: StudioButton) -> ()) -> (),
-	FireClicked: (self: PluginWrapper<TKey, TSetting>, name: string) -> (),
-	Toggled: (self: PluginWrapper<TKey, TSetting>, name: string, callback: (widget: StudioWidget) -> ()) -> (),
-	Set: (self: PluginWrapper<TKey, TSetting>, key: TKey, value: TSetting) -> (),
-	Get: (self: PluginWrapper<TKey, TSetting>, key: TKey) -> TSetting,
+	CreateToolbar: (self: PluginWrapper<TSetting>, name: string) -> StudioToolbar,
+	CreateButton: (self: PluginWrapper<TSetting>, toolbar: StudioToolbar, name: string, tooltip: string, icon: string) -> StudioButton,
+	CreateWidget: (self: PluginWrapper<TSetting>, name: string, info: DockWidgetPluginGuiInfo) -> StudioWidget,
+	Clicked: (self: PluginWrapper<TSetting>, name: string, callback: (button: StudioButton) -> ()) -> (),
+	ClickedOnce: (self: PluginWrapper<TSetting>, name: string, callback: (button: StudioButton) -> ()) -> (),
+	FireClicked: (self: PluginWrapper<TSetting>, name: string) -> (),
+	Toggled: (self: PluginWrapper<TSetting>, name: string, callback: (widget: StudioWidget) -> ()) -> (),
+	Set: (self: PluginWrapper<TSetting>, key: string, value: TSetting) -> (),
+	Get: (self: PluginWrapper<TSetting>, key: string) -> TSetting,
 }
 
 local PluginWrapper = Class.define({
 	name = "PluginWrapper",
 
-	constructor = function<TKey, TSetting>(self: PluginWrapper<TKey, TSetting>, plugin: any)
+	constructor = function<TSetting>(self: PluginWrapper<TSetting>, plugin: any)
 		self.Plugin = plugin
 		self._events = EventBus.new()
 		self._buttons = {}
@@ -52,11 +52,11 @@ local PluginWrapper = Class.define({
 	end,
 
 	methods = {
-		CreateToolbar = function<TKey, TSetting>(self: PluginWrapper<TKey, TSetting>, name: string): StudioToolbar
+		CreateToolbar = function<TSetting>(self: PluginWrapper<TSetting>, name: string): StudioToolbar
 			return self.Plugin:CreateToolbar(name)
 		end,
 
-		CreateButton = function<TKey, TSetting>(self: PluginWrapper<TKey, TSetting>, toolbar: StudioToolbar, name: string, tooltip: string, icon: string): StudioButton
+		CreateButton = function<TSetting>(self: PluginWrapper<TSetting>, toolbar: StudioToolbar, name: string, tooltip: string, icon: string): StudioButton
 			local button = toolbar:CreateButton(name, tooltip, icon)
 			button.ClickableWhenViewportHidden = true
 			self._buttons[name] = button
@@ -68,11 +68,12 @@ local PluginWrapper = Class.define({
 			return button
 		end,
 
-		CreateWidget = function<TKey, TSetting>(self: PluginWrapper<TKey, TSetting>, name: string, info: DockWidgetPluginGuiInfo): StudioWidget
+		CreateWidget = function<TSetting>(self: PluginWrapper<TSetting>, name: string, info: DockWidgetPluginGuiInfo): StudioWidget
 			local widget = self.Plugin:CreateDockWidgetPluginGui(name, info)
 			local wrapper: any
 
 			wrapper = {
+				Gui = widget,
 				Name = name,
 				Title = widget.Title,
 				Enabled = widget.Enabled,
@@ -125,25 +126,25 @@ local PluginWrapper = Class.define({
 			return wrapper
 		end,
 
-		Clicked = function<TKey, TSetting>(self: PluginWrapper<TKey, TSetting>, name: string, callback: (button: StudioButton) -> ())
+		Clicked = function<TSetting>(self: PluginWrapper<TSetting>, name: string, callback: (button: StudioButton) -> ())
 			self._events:_On("Clicked_" .. name, callback)
 		end,
 
-		ClickedOnce = function<TKey, TSetting>(self: PluginWrapper<TKey, TSetting>, name: string, callback: (button: StudioButton) -> ())
+		ClickedOnce = function<TSetting>(self: PluginWrapper<TSetting>, name: string, callback: (button: StudioButton) -> ())
 			self._events:_Once("Clicked_" .. name, callback)
 		end,
 
-		FireClicked = function<TKey, TSetting>(self: PluginWrapper<TKey, TSetting>, name: string)
+		FireClicked = function<TSetting>(self: PluginWrapper<TSetting>, name: string)
 			local button = self._buttons[name]
 			if button then
 				self._events:_Fire("Clicked_" .. name, button)
 			end
 		end,
 
-		Toggled = function<TKey, TSetting>(self: PluginWrapper<TKey, TSetting>, name: string, callback: (widget: StudioWidget) -> ())
+		Toggled = function<TSetting>(self: PluginWrapper<TSetting>, name: string, callback: (widget: StudioWidget) -> ())
 			self._events:_On("Toggled_" .. name, callback)
 		end,
-		Set = function<TKey, TSetting>(self: PluginWrapper<TKey, TSetting>, key: TKey, val: TSetting)
+		Set = function<TSetting>(self: PluginWrapper<TSetting>, key: TKey, val: TSetting)
 			self._settings[key] = val
 			if self.Plugin and self.Plugin.SetSetting then
 				pcall(function()
@@ -152,7 +153,7 @@ local PluginWrapper = Class.define({
 			end
 			return self._settings[key]
 		end,
-		Get = function<TKey, TSetting>(self: PluginWrapper<TKey, TSetting>, key: TKey): TSetting
+		Get = function<TSetting>(self: PluginWrapper<TSetting>, key: TKey): TSetting
 			local stored = self._settings[key]
 			if stored ~= nil then
 				return stored
@@ -173,8 +174,8 @@ local PluginWrapper = Class.define({
 
 local Plugin = {}
 
-function Plugin.new<TKey, TSetting>(plug: any): PluginWrapper<TKey, TSetting>
-	return (PluginWrapper.new(plug))::PluginWrapper<TKey, TSetting>
+function Plugin.new<TSetting>(plug: any): PluginWrapper<TSetting>
+	return (PluginWrapper.new(plug))::PluginWrapper<TSetting>
 end
 
 return Plugin
