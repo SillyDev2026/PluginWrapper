@@ -36,9 +36,18 @@ export type PluginWrapper<TSetting> = {
 	ClickedOnce: (self: PluginWrapper<TSetting>, name: string, callback: (button: StudioButton) -> ()) -> (),
 	FireClicked: (self: PluginWrapper<TSetting>, name: string) -> (),
 	Toggled: (self: PluginWrapper<TSetting>, name: string, callback: (widget: StudioWidget) -> ()) -> (),
-	Set: (self: PluginWrapper<TSetting>, key: string, value: TSetting) -> (),
+	Set: (self: PluginWrapper<TSetting>, key: string, value: TSetting, saveToPlugin: boolean?) -> (),
 	Get: (self: PluginWrapper<TSetting>, key: string) -> TSetting,
 }
+
+local function shallowClone<TSetting>(tbl: TSetting)
+	if type(tbl) ~= 'table' then return tbl end
+	local clone = {}
+	for key, values in pairs(tbl) do
+		clone[key] = values
+	end
+	return clone
+end
 
 local PluginWrapper = Class.define({
 	name = "PluginWrapper",
@@ -144,30 +153,18 @@ local PluginWrapper = Class.define({
 		Toggled = function<TSetting>(self: PluginWrapper<TSetting>, name: string, callback: (widget: StudioWidget) -> ())
 			self._events:_On("Toggled_" .. name, callback)
 		end,
-		Set = function<TSetting>(self: PluginWrapper<TSetting>, key: TKey, val: TSetting)
-			self._settings[key] = val
-			if self.Plugin and self.Plugin.SetSetting then
+		Set = function<TSetting>(self:PluginWrapper<TSetting>, key: string, val: TSetting, saveToPlugin: boolean?)
+			local storedVal = shallowClone(val)
+			self._settings[key] = storedVal
+			if saveToPlugin and self.Plugin and self.Plugin.SetSetting then
 				pcall(function()
-					self.Plugin:SetSetting(key, val)
+					self.Plugin.SetSetting(key, storedVal)
 				end)
 			end
-			return self._settings[key]
+			return storedVal
 		end,
-		Get = function<TSetting>(self: PluginWrapper<TSetting>, key: TKey): TSetting
-			local stored = self._settings[key]
-			if stored ~= nil then
-				return stored
-			end
-			if self.Plugin and self.Plugin.GetSetting then
-				local ok, result = pcall(function()
-					return self.Plugin:GetSetting(key)
-				end)
-				if ok then
-					self._settings[key] = result
-					return result
-				end
-			end
-			return nil:: any
+		Get = function<TSetting>(self: PluginWrapper<TSetting>, key: string)
+			return self._settings[key]
 		end,
 	}
 })
