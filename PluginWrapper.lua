@@ -1,4 +1,5 @@
 --!strict
+local TweenService = game:GetService('TweenService')
 local Modules = script.Parent.Modules
 local Class = require(Modules.ClassSystem)
 local EventBus = require(Modules.EventBus)
@@ -16,7 +17,7 @@ export type StudioButton = {
 export type StudioWidget = {
 	Name: string,
 	Enabled: boolean,
-	Gui: {Title: string},
+	Gui: DockWidgetPluginGuiInfo,
 	Toggle: (self: StudioWidget) -> (),
 	Open: (self: StudioWidget, enable: boolean) -> (),
 	Close: (self: StudioWidget, enable: boolean) -> (),
@@ -29,6 +30,9 @@ export type PluginWrapper = {
 	_buttons: { [string]: StudioButton },
 	_widgets: { [string]: StudioWidget },
 	_settings: {[string]: any},
+	_notifications: Frame?,
+	_notificationCount: number,
+	Debug: boolean,
 	CreateToolbar: (self: PluginWrapper, name: string) -> StudioToolbar,
 	CreateButton: (self: PluginWrapper, toolbar: StudioToolbar, name: string, tooltip: string, icon: string) -> StudioButton,
 	CreateWidget: (self: PluginWrapper, name: string, info: DockWidgetPluginGuiInfo) -> StudioWidget,
@@ -38,6 +42,7 @@ export type PluginWrapper = {
 	Toggled: (self: PluginWrapper, name: string, callback: (widget: StudioWidget) -> ()) -> (),
 	Set: (self: PluginWrapper, key: string, value: any, saveToPlugin: boolean?) -> (),
 	Get: (self: PluginWrapper, key: string) -> any,
+	Notify: (self: PluginWrapper, message: string, color: Color3?) -> (),
 }
 
 local function shallowClone(tbl)
@@ -58,6 +63,9 @@ local PluginWrapper = Class.define({
 		self._buttons = {}
 		self._widgets = {}
 		self._settings = {}
+		self._notifications = nil
+		self._notificationCount = 0
+		self.Debug = false
 	end,
 
 	methods = {
@@ -153,7 +161,7 @@ local PluginWrapper = Class.define({
 		Toggled = function(self: PluginWrapper, name: string, callback: (widget: StudioWidget) -> ())
 			self._events:_On("Toggled_" .. name, callback)
 		end,
-		Set = function(self:PluginWrapper, key: string, val: TSetting, saveToPlugin: boolean?)
+		Set = function(self:PluginWrapper, key: string, val: any, saveToPlugin: boolean?)
 			local storedVal = shallowClone(val)
 			self._settings[key] = storedVal
 			if saveToPlugin and self.Plugin and self.Plugin.SetSetting then
