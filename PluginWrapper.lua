@@ -40,8 +40,8 @@ export type PluginWrapper<data> = {
 	ClickedOnce: (self: PluginWrapper<data>, name: string, callback: (button: StudioButton) -> ()) -> (),
 	FireClicked: (self: PluginWrapper<data>, name: string) -> (),
 	Toggled: (self: PluginWrapper<data>, name: string, callback: (widget: StudioWidget) -> ()) -> (),
-	Set: (self: PluginWrapper<data>, key: string, value: any, saveToPlugin: boolean?) -> (),
-	Get: (self: PluginWrapper<data>, key: string) -> any,
+	Set: (self: PluginWrapper<data>, key: string, value: data, saveToPlugin: boolean?) -> (),
+	Get: (self: PluginWrapper<data>, key: string) -> data,
 	Notify: (self: PluginWrapper<data>, message: string, color: Color3?) -> (),
 }
 
@@ -161,7 +161,7 @@ local PluginWrapper = Class.define({
 		Toggled = function<data>(self: PluginWrapper<data>, name: string, callback: (widget: StudioWidget) -> ())
 			self._events:_On("Toggled_" .. name, callback)
 		end,
-		Set = function<data>(self:PluginWrapper<data>, key: string, val: any, saveToPlugin: boolean?)
+		Set = function<data>(self:PluginWrapper<data>, key: string, val: data, saveToPlugin: boolean?)
 			local storedVal = shallowClone(val)
 			self._settings[key] = storedVal
 			if saveToPlugin and self.Plugin and self.Plugin.SetSetting then
@@ -171,7 +171,7 @@ local PluginWrapper = Class.define({
 			end
 			return storedVal
 		end,
-		Get = function<data>(self: PluginWrapper<data>, key: string)
+		Get = function<data>(self: PluginWrapper<data>, key: string): data
 			return self._settings[key]
 		end,		
 		Notify = function<data>(self: PluginWrapper<data>, message: string, color: Color3?)
