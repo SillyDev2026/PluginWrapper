@@ -2,7 +2,8 @@ local TweenService = game:GetService('TweenService')
 local Modules = script.Parent.Modules
 local Class = require(Modules.ClassSystem)
 local EventBus = require(Modules.EventBus)
-
+local User = game:GetService('UserInputService')
+local RunService = game:GetService('RunService')
 export type StudioToolbar = {
 	CreateButton: (self: any, name: string, tooltip: string, icon: string) -> StudioButton,
 }
@@ -23,6 +24,65 @@ export type StudioWidget = {
 	_events: typeof(EventBus.new())
 }
 
+type Size = {
+	xScale: number?,
+	yScale: number?,
+	xOffset: number?,
+	yOffset: number?
+}
+
+type ColorVarients = {
+	Red: number?,
+	Green: number?,
+	Blue: number?
+}
+
+type Apply = {
+	Apply: Enum.ApplyStrokeMode?,
+	Line: Enum.LineJoinMode?,
+	color: ColorVarients?,
+	Thickness: number?,
+	Enabled: boolean?,
+	Transparency: number?
+}
+
+type AnchorPoint = {
+	X: number?,
+	Y: number?
+}
+
+type Text = {
+	TextScaled: boolean,
+	TextWrapped: boolean,
+	RichText: boolean,
+	TextSize: number,
+	Visible: boolean,
+	TextColor: ColorVarients,
+	Transparency: number,
+	XAlignment: Enum.TextXAlignment,
+	YAlignment: Enum.TextYAlignment,
+	text: string,
+}
+
+type UiObject = TextLabel | TextButton | Frame | ScrollingFrame | ImageButton | ImageLabel
+
+export type Ui = {
+	Color: (self: Ui, color: ColorVarients) -> Ui,
+	Corner: (self: Ui, corner: AnchorPoint) -> Ui,
+	Size: (self: Ui, size: Size) -> Ui,
+	Position: (self: Ui, position: Size) -> Ui,
+	Transparency: (self: Ui, alpha: number) -> Ui,
+	Border: (self: Ui, thickness: number, color: ColorVarients?) -> Ui,
+	Stroke: (self: Ui, options: Apply) -> Ui,
+	OnHover: (self: Ui, onEnter: (object: UiObject) -> (), onLeave: (object: UiObject) -> ()?) -> Ui,
+	Parent: (self: Ui, parent: any) -> Ui,
+	Name: (self: Ui) -> Ui,
+	Anchor: (self: Ui, vector: AnchorPoint) -> Ui,
+	Text: (self: Ui, options: Text) -> Ui,
+}
+
+type UiTypes = 'Frame'| 'TextLabel'| 'TextButton'| 'TextBox'| 'ImageLabel'| 'ImageButton'| 'ScrollingFrame'| 'UIListLayout'| 'UIGridLayout'| 'UITableLayout'| 'UIPadding'| 'UIStroke'| 'UICorner'| 'UIAspectRatioConstraint'| 'UIScale'| 'UIGradient'| 'UIGradient'| 'UITextSizeConstraint'| 'UIConstraint'
+
 export type PluginWrapper<data> = {
 	Plugin: any,
 	_events: typeof(EventBus.new()),
@@ -42,6 +102,7 @@ export type PluginWrapper<data> = {
 	Toggled: (self: PluginWrapper<data>, name: string, callback: (widget: StudioWidget) -> ()) -> (),
 	Set: (self: PluginWrapper<data>, key: string, value: data, saveToPlugin: boolean?) -> (),
 	Get: (self: PluginWrapper<data>, key: string) -> data,
+	AddUi: (self: PluginWrapper<data>, instance: UiTypes) -> Ui,
 	Notify: (self: PluginWrapper<data>, message: string, color: Color3?) -> (),
 }
 
@@ -239,6 +300,114 @@ local PluginWrapper = Class.define({
 				updatePosition()
 				self._notificationCount -= 1
 			end)
+		end,
+		AddUi = function<data>(self: PluginWrapper<data>, instance: UiTypes)
+			local inst = Instance.new(instance):: Instance
+			local uiWrapper: Ui = {}
+			uiWrapper._inst = inst
+			function uiWrapper:Color(color: ColorVarients)
+				local r, g, b = color.Red or 0, color.Green or 0, color.Blue or 0
+				inst.BackgroundColor3 = Color3.fromRGB(r, g, b)
+				return self
+			end
+			function uiWrapper:Corner(corner: AnchorPoint)
+				if inst:IsA("GuiObject") then
+					local uiCorner = inst:FindFirstChildOfClass("UICorner") or Instance.new("UICorner")
+					local cornerSize = UDim.new(corner.X, corner.Y)
+					uiCorner.CornerRadius = cornerSize
+					uiCorner.Parent = inst
+				end
+				return self
+			end
+			function uiWrapper:Size(size: Size)
+				if inst:IsA("GuiObject") then
+					inst.Size = UDim2.new(size.xScale or 0, size.xOffset or 0, size.yScale or 0, size.yOffset or 0)
+				end
+				return self
+			end
+			function uiWrapper:Position(pos: Size)
+				if inst:IsA("GuiObject") then
+					inst.Position = UDim2.new(pos.xScale or 0, pos.xOffset or 0, pos.yScale or 0, pos.yOffset or 0)
+				end
+				return self
+			end
+			function uiWrapper:Transparency(alpha: number)
+				if inst:IsA("GuiObject") then
+					inst.BackgroundTransparency = alpha
+				end
+				return self
+			end
+			function uiWrapper:Border(thickness: number, color: Color3?)
+				if inst:IsA("GuiObject") then
+					inst.BorderSizePixel = thickness
+					if color then
+						inst.BorderColor3 = color
+					end
+				end
+				return self
+			end
+			function uiWrapper:Stroke(options: Apply)
+				if inst:IsA("GuiObject") then
+					local color = options.color
+					local r, g, b = color.Red or 0, color.Green or 0, color.Blue or 0
+					local stroke = inst:FindFirstChildOfClass("UIStroke") or Instance.new("UIStroke")
+					stroke.Enabled = options.Enabled or false
+					stroke.Transparency = options.Transparency or 0
+					stroke.ApplyStrokeMode = options.Apply or Enum.ApplyStrokeMode.Border
+					stroke.LineJoinMode = options.Line or Enum.LineJoinMode.Round
+					stroke.Color = Color3.fromRGB(r, g, b) or Color3.new(0)
+					stroke.Thickness = options.Thickness or 1
+					stroke.Parent = inst
+				end
+				return self
+			end	
+			function uiWrapper:OnHover(onEnter: (object: UiObject) -> (), onLeave: (object: UiObject) -> ()?)
+				if inst:IsA('TextButton') or inst:IsA('ImageButton') then
+					inst.MouseEnter:Connect(function()
+						onEnter(inst)
+					end)
+					inst.MouseLeave:Connect(function()
+						onLeave(inst)
+					end)
+				end
+				return self
+			end
+			function uiWrapper:Parent(parent)
+				local t = typeof(parent)
+				if t == 'table' and parent._inst then
+					inst.Parent = parent._inst
+				else
+					inst.Parent = parent
+				end
+				return self
+			end
+			function uiWrapper:Name()
+				return inst.Name
+			end
+			function uiWrapper:Anchor(vector: AnchorPoint)
+				if inst:IsA('GuiObject') then
+					inst.AnchorPoint = Vector2.new(vector.X or 0, vector.Y or 0)
+				end
+				return self
+			end
+			function uiWrapper:Text(options: Text)
+				local textColor = options.TextColor
+				local r1, g1, b1 = textColor.Red or 0, textColor.Green or 0, textColor.Blue or 0
+				local TextColor = Color3.fromRGB(r1, g1, b1)
+				local button = Instance.new('TextLabel')
+				inst.TextScaled = options.TextScaled
+				inst.TextWrapped = options.TextWrapped
+				inst.RichText = options.RichText
+				inst.TextSize = options.TextSize
+				inst.Visible = options.Visible
+				inst.TextColor3 = TextColor
+				inst.TextTransparency = options.Transparency
+				inst.TextXAlignment = options.XAlignment
+				inst.TextYAlignment = options.YAlignment
+				inst.Text = options.text
+				return self
+			end
+			return uiWrapper
 		end,
 	}
 })
