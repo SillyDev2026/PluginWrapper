@@ -1,4 +1,4 @@
-local Class = require(script.Parent.ClassSystem)
+local Class = require(script.Parent.ClassModule)
 
 export type Connection<T...> = {
 	Connected: boolean,
@@ -28,7 +28,7 @@ local Signal = Class.define({
 	end,
 })
 
-function createConnection<T...>(signal: Signal<T...>, callback: (T...) -> ()): Connection<T...>
+local function createConnection<T...>(signal: Signal<T...>, callback: (T...) -> ()): Connection<T...>
 	local connection: Connection<T...>
 	connection = {
 		Connected = true,
