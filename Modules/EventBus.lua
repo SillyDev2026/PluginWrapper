@@ -1,5 +1,5 @@
 --!strict
-local Class = require(script.Parent.ClassSystem)
+local Class = require(script.Parent.ClassModule)
 local Signal = require(script.Parent.Signal)
 
 export type EventCallback<T...> = (source: any, T...) -> (boolean?)
