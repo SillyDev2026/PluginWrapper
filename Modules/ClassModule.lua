@@ -83,10 +83,7 @@ function Class.define<T>(options: ClassOptions): Class<T>
 		end
 	end
 
-	if base then
-		setmetatable(class, { __index = base })
-	end
-
+	-- Combine inheritance lookup and callable-class metatable at the end.
 	if options.static then
 		for k, v in pairs(options.static) do
 			class[k] = v
@@ -111,7 +108,7 @@ function Class.define<T>(options: ClassOptions): Class<T>
 				readonlyProps[prop] = true
 			end
 			if def.signal then
-				signals[prop] = createPropertySignal()
+				signals[prop] = true
 			end
 		end
 	end
@@ -119,6 +116,8 @@ function Class.define<T>(options: ClassOptions): Class<T>
 	function class.new(...): T
 		assert(not class.__abstract, `Cannot instantiate abstract class {class.__type}`)
 
+		local propertySignals = {}
+		for prop in pairs(signals) do propertySignals[prop] = createPropertySignal() end
 		local self = {} :: any
 		for prop, val in pairs(defaults) do
 			self[prop] = val
@@ -136,8 +135,8 @@ function Class.define<T>(options: ClassOptions): Class<T>
 			if validators[key] and not validators[key](value) then
 				error(`Invalid value for property {key}`)
 			end
-			if signals[key] then
-				signals[key]:Fire(value)
+			if propertySignals[key] then
+				propertySignals[key]:Fire(value)
 			end
 			rawSet(tbl, key, value)
 		end
@@ -156,7 +155,7 @@ function Class.define<T>(options: ClassOptions): Class<T>
 			class.init(typedSelf, ...)
 		end
 
-		for prop, sig in pairs(signals) do
+		for prop, sig in pairs(propertySignals) do
 			typedSelf[prop .. "Changed"] = sig
 		end
 
@@ -174,7 +173,7 @@ function Class.define<T>(options: ClassOptions): Class<T>
 	end
 
 	function class:IsA(className: string): boolean
-		local current = self
+		local current = class
 		while current do
 			if current.__type == className then
 				return true
@@ -193,6 +192,7 @@ function Class.define<T>(options: ClassOptions): Class<T>
 	end
 
 	setmetatable(class, {
+		__index = base,
 		__call = function(_, ...)
 			return class.new(...)
 		end,
