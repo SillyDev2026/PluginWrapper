@@ -1,6 +1,6 @@
 local TweenService = game:GetService('TweenService')
 local Modules = script.Parent.Modules
-local Class = require(Modules.ClassSystem)
+local Class = require(Modules.ClassModule)
 local EventBus = require(Modules.EventBus)
 local User = game:GetService('UserInputService')
 local RunService = game:GetService('RunService')
